@@ -39,6 +39,8 @@ public interface Transformation extends Describable {
      */
     Try<TransformationSubject> transform(TransformationSubject subjectToTransform, ExecutionGraphDependenciesResolver dependenciesResolver, @Nullable ProjectExecutionServiceRegistry services);
 
+    TransformationContinuation<TransformationSubject> prepareTransform(TransformationSubject subjectToTransform, ExecutionGraphDependenciesResolver dependenciesResolver, @Nullable ProjectExecutionServiceRegistry services);
+
     /**
      * Whether the transformation requires dependencies of the transformed artifact to be injected.
      */
@@ -48,4 +50,9 @@ public interface Transformation extends Describable {
      * Extract the transformation steps from this transformation.
      */
     void visitTransformationSteps(Action<? super TransformationStep> action);
+
+    interface TransformationContinuation<T> {
+        boolean isExpensive();
+        Try<T> invoke();
+    }
 }

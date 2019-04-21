@@ -64,17 +64,11 @@ class TransformingAsyncArtifactListener implements ResolvedArtifactSet.AsyncArti
             TransformationSubject initialSubject = TransformationSubject.initial(artifactId, file);
             TransformationOperation operation = new TransformationOperation(transformation, initialSubject, dependenciesResolver);
             artifactResults.put(artifactId, operation);
-            // If we are here, then the transform has not been scheduled.
-            // So either
-            //   1) the transformed variant is not declared as an input for a work item or resolved at configuration time, or
-            //   2) the artifact to transform is an external artifact.
-            // For 1), we don't do any performance optimizations since transformed variants should be declared as input to some work.
-            // For 2), either the artifact has just been downloaded or it was already downloaded earlier.
-            // If it has just been downloaded, then, since downloads happen in parallel, we are already on a worker thread and we use it to execute the transform.
-            // If it has been downloaded earlier, then there is a high chance that the transformed artifact is already in a Gradle user home workspace and up-to-date.
-            // Using the BuildOperationQueue here to only realize that the result of the transformation is up-to-date in the Gradle user home workspace has a performance impact,
-            // so we are executing the up-to-date transform operation in place.
-            operation.run(null);
+            if (operation.isExpensive()) {
+                actions.add(operation);
+            } else {
+                operation.run(null);
+            }
         }
     }
 
@@ -94,9 +88,10 @@ class TransformingAsyncArtifactListener implements ResolvedArtifactSet.AsyncArti
         TransformationSubject initialSubject = TransformationSubject.initial(file);
         TransformationOperation operation = new TransformationOperation(transformation, initialSubject, dependenciesResolver);
         fileResults.put(file, operation);
-        // We expect file transformations to be executed in an immediate way,
-        // since they cannot be scheduled early.
-        // To allow file transformations to run in parallel, we use the BuildOperationQueue.
-        actions.add(operation);
+        if (operation.isExpensive()) {
+            actions.add(operation);
+        } else {
+            operation.run(null);
+        }
     }
 }

@@ -121,6 +121,10 @@ public class DefaultTransformerInvoker implements TransformerInvoker {
         FileCollectionFingerprinter inputArtifactFingerprinter = fingerprinterRegistry.getFingerprinter(transformer.getInputArtifactNormalizer());
         String normalizedInputPath = inputArtifactFingerprinter.normalizePath(inputArtifactSnapshot);
         TransformationWorkspaceIdentity identity = getTransformationIdentity(producerProject, inputArtifactSnapshot, normalizedInputPath, transformer, dependenciesFingerprint);
+        return doInvoke(transformer, inputArtifact, dependencies, subject, fingerprinterRegistry, dependenciesFingerprint, workspaceProvider, inputArtifactSnapshot, inputArtifactFingerprinter, identity);
+    }
+
+    private Try<ImmutableList<File>> doInvoke(Transformer transformer, File inputArtifact, ArtifactTransformDependencies dependencies, TransformationSubject subject, FileCollectionFingerprinterRegistry fingerprinterRegistry, CurrentFileCollectionFingerprint dependenciesFingerprint, CachingTransformationWorkspaceProvider workspaceProvider, FileSystemLocationSnapshot inputArtifactSnapshot, FileCollectionFingerprinter inputArtifactFingerprinter, TransformationWorkspaceIdentity identity) {
         return workspaceProvider.withWorkspace(identity, (identityString, workspace) -> buildOperationExecutor.call(new CallableBuildOperation<Try<ImmutableList<File>>>() {
             @Override
             public Try<ImmutableList<File>> call(BuildOperationContext context) {
@@ -190,6 +194,44 @@ public class DefaultTransformerInvoker implements TransformerInvoker {
                     .progressDisplayName(displayName);
             }
         }));
+    }
+
+    @Override
+    public Transformation.TransformationContinuation<ImmutableList<File>> prepareInvoke(Transformer transformer, File inputArtifact, ArtifactTransformDependencies dependencies, TransformationSubject subject, FileCollectionFingerprinterRegistry fingerprinterRegistry) {
+        FileCollectionFingerprinter dependencyFingerprinter = fingerprinterRegistry.getFingerprinter(transformer.getInputArtifactDependenciesNormalizer());
+        CurrentFileCollectionFingerprint dependenciesFingerprint = dependencies.fingerprint(dependencyFingerprinter);
+        ProjectInternal producerProject = determineProducerProject(subject);
+        CachingTransformationWorkspaceProvider workspaceProvider = determineWorkspaceProvider(producerProject);
+        FileSystemLocationSnapshot inputArtifactSnapshot = fileSystemSnapshotter.snapshot(inputArtifact);
+        FileCollectionFingerprinter inputArtifactFingerprinter = fingerprinterRegistry.getFingerprinter(transformer.getInputArtifactNormalizer());
+        String normalizedInputPath = inputArtifactFingerprinter.normalizePath(inputArtifactSnapshot);
+        TransformationWorkspaceIdentity identity = getTransformationIdentity(producerProject, inputArtifactSnapshot, normalizedInputPath, transformer, dependenciesFingerprint);
+        Try<ImmutableList<File>> cachedResult = workspaceProvider.getCachedResult(identity);
+        if (cachedResult != null) {
+            return new Transformation.TransformationContinuation<ImmutableList<File>>() {
+
+                @Override
+                public boolean isExpensive() {
+                    return false;
+                }
+
+                @Override
+                public Try<ImmutableList<File>> invoke() {
+                    return cachedResult;
+                }
+            };
+        }
+        return new Transformation.TransformationContinuation<ImmutableList<File>>() {
+            @Override
+            public boolean isExpensive() {
+                return true;
+            }
+
+            @Override
+            public Try<ImmutableList<File>> invoke() {
+                return doInvoke(transformer, inputArtifact, dependencies, subject, fingerprinterRegistry, dependenciesFingerprint, workspaceProvider, inputArtifactSnapshot, inputArtifactFingerprinter, identity);
+            }
+        };
     }
 
     private TransformationWorkspaceIdentity getTransformationIdentity(@Nullable ProjectInternal project, FileSystemLocationSnapshot inputArtifactSnapshot, String inputArtifactPath, Transformer transformer, CurrentFileCollectionFingerprint dependenciesFingerprint) {

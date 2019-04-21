@@ -22,6 +22,8 @@ import org.gradle.execution.ProjectExecutionServiceRegistry
 import org.gradle.internal.Try
 import spock.lang.Specification
 
+import javax.annotation.Nullable
+
 class ChainedTransformerTest extends Specification {
     private TransformationSubject initialSubject = TransformationSubject.initial(new File("foo"))
 
@@ -33,7 +35,7 @@ class ChainedTransformerTest extends Specification {
         chain.transform(initialSubject, Mock(ExecutionGraphDependenciesResolver), null).get().files == [new File("foo/cached/non-cached")]
     }
 
-    class CachingTransformation implements Transformation {
+    class CachingTransformation extends AbstractTestTransformation {
 
         @Override
         Try<TransformationSubject> transform(TransformationSubject subjectToTransform, ExecutionGraphDependenciesResolver dependenciesResolver, ProjectExecutionServiceRegistry services) {
@@ -41,32 +43,13 @@ class ChainedTransformerTest extends Specification {
         }
 
         @Override
-        boolean requiresDependencies() {
-            return false
-        }
-
-        @Override
         String getDisplayName() {
             return "cached"
         }
 
-        @Override
-        void visitTransformationSteps(Action<? super TransformationStep> action) {
-        }
-
-
-        @Override
-        boolean endsWith(Transformation otherTransform) {
-            return false
-        }
-
-        @Override
-        int stepsCount() {
-            return 1
-        }
     }
 
-    class NonCachingTransformation implements Transformation {
+    class NonCachingTransformation extends AbstractTestTransformation {
 
         @Override
         Try<TransformationSubject> transform(TransformationSubject subjectToTransform, ExecutionGraphDependenciesResolver dependenciesResolver, ProjectExecutionServiceRegistry services) {
@@ -74,13 +57,30 @@ class ChainedTransformerTest extends Specification {
         }
 
         @Override
-        boolean requiresDependencies() {
-            return false
+        String getDisplayName() {
+            return "non-cached"
+        }
+    }
+
+    abstract class AbstractTestTransformation implements Transformation {
+        @Override
+        Transformation.TransformationContinuation<TransformationSubject> prepareTransform(TransformationSubject subjectToTransform, ExecutionGraphDependenciesResolver dependenciesResolver, @Nullable ProjectExecutionServiceRegistry services) {
+            return new Transformation.TransformationContinuation<TransformationSubject>() {
+                @Override
+                boolean isExpensive() {
+                    return true
+                }
+
+                @Override
+                Try<TransformationSubject> invoke() {
+                    return transform(subjectToTransform, dependenciesResolver, services)
+                }
+            }
         }
 
         @Override
-        String getDisplayName() {
-            return "non-cached"
+        boolean requiresDependencies() {
+            return false
         }
 
         @Override
