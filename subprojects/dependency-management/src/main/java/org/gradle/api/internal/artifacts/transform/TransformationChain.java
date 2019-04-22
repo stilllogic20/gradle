@@ -66,10 +66,10 @@ public class TransformationChain implements Transformation {
     }
 
     @Override
-    public TransformationContinuation<TransformationSubject> prepareTransform(TransformationSubject subjectToTransform, ExecutionGraphDependenciesResolver dependenciesResolver, @Nullable ProjectExecutionServiceRegistry services) {
-        TransformationContinuation<TransformationSubject> continuation = first.prepareTransform(subjectToTransform, dependenciesResolver, services);
-        if (continuation.isExpensive()) {
-            return new TransformationContinuation<TransformationSubject>() {
+    public TransformationInvocation<TransformationSubject> createInvocation(TransformationSubject subjectToTransform, ExecutionGraphDependenciesResolver dependenciesResolver, @Nullable ProjectExecutionServiceRegistry services) {
+        TransformationInvocation<TransformationSubject> invocation = first.createInvocation(subjectToTransform, dependenciesResolver, services);
+        if (invocation.isExpensive()) {
+            return new TransformationInvocation<TransformationSubject>() {
                 @Override
                 public boolean isExpensive() {
                     return true;
@@ -77,25 +77,25 @@ public class TransformationChain implements Transformation {
 
                 @Override
                 public Try<TransformationSubject> invoke() {
-                    return continuation.invoke()
+                    return invocation.invoke()
                         .flatMap(intermediateSubject -> second.transform(intermediateSubject, dependenciesResolver, services));
                 }
             };
         }
-        return continuation.invoke()
-            .map(intermediateSubject -> second.prepareTransform(intermediateSubject, dependenciesResolver, services))
-            .getSuccessfulOrElse(invocation -> new TransformationContinuation<TransformationSubject>() {
+        return invocation.invoke()
+            .map(intermediateSubject -> second.createInvocation(intermediateSubject, dependenciesResolver, services))
+            .getSuccessfulOrElse(secondInvocation -> new TransformationInvocation<TransformationSubject>() {
 
                 @Override
                 public boolean isExpensive() {
-                    return invocation.isExpensive();
+                    return secondInvocation.isExpensive();
                 }
 
                 @Override
                 public Try<TransformationSubject> invoke() {
-                    return invocation.invoke();
+                    return secondInvocation.invoke();
                 }
-            }, failure -> new TransformationContinuation<TransformationSubject>() {
+            }, failure -> new TransformationInvocation<TransformationSubject>() {
 
                 @Override
                 public boolean isExpensive() {

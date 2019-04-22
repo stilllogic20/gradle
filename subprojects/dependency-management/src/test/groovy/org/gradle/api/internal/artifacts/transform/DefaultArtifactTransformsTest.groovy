@@ -135,8 +135,8 @@ class DefaultArtifactTransformsTest extends Specification {
         def set = resolvedVariantSet()
         def variants = [variant1, variant2] as Set
         def transformation = Mock(Transformation)
-        def invocation1 = Mock(Transformation.TransformationContinuation)
-        def invocation2 = Mock(Transformation.TransformationContinuation)
+        def invocation1 = Mock(TransformationInvocation)
+        def invocation2 = Mock(TransformationInvocation)
         def listener = Mock(ResolvedArtifactSet.AsyncArtifactListener)
         def visitor = Mock(ArtifactVisitor)
         def targetAttributes = typeAttributes("classes")
@@ -179,11 +179,11 @@ class DefaultArtifactTransformsTest extends Specification {
         _ * transformation.requiresDependencies() >> false
         _ * transformationNodeRegistry.getIfExecuted(_, _) >> Optional.empty()
 
-        1 * transformation.prepareTransform({ it.files == [sourceArtifactFile]}, _ as ExecutionGraphDependenciesResolver, _) >> invocation1
+        1 * transformation.createInvocation({ it.files == [sourceArtifactFile]}, _ as ExecutionGraphDependenciesResolver, _) >> invocation1
         1 * invocation1.expensive >> true
         1 * invocation1.invoke() >> Try.successful(TransformationSubject.initial(sourceArtifactId, sourceArtifactFile).createSubjectFromResult(ImmutableList.of(outFile1, outFile2))) >> invocation1
 
-        1 * transformation.prepareTransform({ it.files == [sourceFile] }, _ as ExecutionGraphDependenciesResolver, _) >> invocation2
+        1 * transformation.createInvocation({ it.files == [sourceFile] }, _ as ExecutionGraphDependenciesResolver, _) >> invocation2
         1 * invocation2.expensive >> true
         1 * invocation2.invoke() >> Try.successful(TransformationSubject.initial(sourceFile).createSubjectFromResult(ImmutableList.of(outFile3, outFile4)))
 

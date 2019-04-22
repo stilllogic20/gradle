@@ -27,22 +27,22 @@ import javax.annotation.Nullable;
 class TransformationOperation implements TransformationResult, RunnableBuildOperation {
     private final Transformation transformation;
     private final TransformationSubject subject;
-    private final Transformation.TransformationContinuation<TransformationSubject> continuation;
+    private final TransformationInvocation<TransformationSubject> invocation;
     private Try<TransformationSubject> transformedSubject;
 
     TransformationOperation(Transformation transformation, TransformationSubject subject, ExecutionGraphDependenciesResolver dependenciesResolver) {
         this.transformation = transformation;
         this.subject = subject;
-        this.continuation = transformation.prepareTransform(subject, dependenciesResolver, null);
+        this.invocation = transformation.createInvocation(subject, dependenciesResolver, null);
     }
 
     @Override
     public void run(@Nullable BuildOperationContext context) {
-        transformedSubject = continuation.invoke();
+        transformedSubject = invocation.invoke();
     }
 
     public boolean isExpensive() {
-        return continuation.isExpensive();
+        return invocation.isExpensive();
     }
 
     @Override

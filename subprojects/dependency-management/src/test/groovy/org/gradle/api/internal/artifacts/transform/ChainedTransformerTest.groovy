@@ -64,8 +64,8 @@ class ChainedTransformerTest extends Specification {
 
     abstract class AbstractTestTransformation implements Transformation {
         @Override
-        Transformation.TransformationContinuation<TransformationSubject> prepareTransform(TransformationSubject subjectToTransform, ExecutionGraphDependenciesResolver dependenciesResolver, @Nullable ProjectExecutionServiceRegistry services) {
-            return new Transformation.TransformationContinuation<TransformationSubject>() {
+        TransformationInvocation<TransformationSubject> createInvocation(TransformationSubject subjectToTransform, ExecutionGraphDependenciesResolver dependenciesResolver, @Nullable ProjectExecutionServiceRegistry services) {
+            return new TransformationInvocation<TransformationSubject>() {
                 @Override
                 boolean isExpensive() {
                     return true

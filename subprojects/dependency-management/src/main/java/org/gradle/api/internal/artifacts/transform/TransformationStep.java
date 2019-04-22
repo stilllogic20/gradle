@@ -90,13 +90,7 @@ public class TransformationStep implements Transformation, TaskDependencyContain
 
     @Override
     public Try<TransformationSubject> transform(TransformationSubject subjectToTransform, ExecutionGraphDependenciesResolver dependenciesResolver, @Nullable ProjectExecutionServiceRegistry services) {
-        if (LOGGER.isInfoEnabled()) {
-            LOGGER.info("Transforming {} with {}", subjectToTransform.getDisplayName(), transformer.getDisplayName());
-        }
-        FileCollectionFingerprinterRegistry fingerprinterRegistry = getFingerprinterRegistry(
-            owningProject != null && services != null ? services.getProjectService(owningProject, FileCollectionFingerprinterRegistry.class) : null
-        );
-        isolateTransformerParameters(fingerprinterRegistry);
+        FileCollectionFingerprinterRegistry fingerprinterRegistry = prepareForExecution(subjectToTransform, services);
         return dependenciesResolver.forTransformer(transformer).flatMap(dependencies -> {
             return doTransform(subjectToTransform, fingerprinterRegistry, dependencies, subjectToTransform.getFiles());
         });
@@ -116,19 +110,13 @@ public class TransformationStep implements Transformation, TaskDependencyContain
     }
 
     @Override
-    public TransformationContinuation<TransformationSubject> prepareTransform(TransformationSubject subjectToTransform, ExecutionGraphDependenciesResolver dependenciesResolver, @Nullable ProjectExecutionServiceRegistry services) {
-        if (LOGGER.isInfoEnabled()) {
-            LOGGER.info("Transforming {} with {}", subjectToTransform.getDisplayName(), transformer.getDisplayName());
-        }
-        FileCollectionFingerprinterRegistry fingerprinterRegistry = getFingerprinterRegistry(
-            owningProject != null && services != null ? services.getProjectService(owningProject, FileCollectionFingerprinterRegistry.class) : null
-        );
-        isolateTransformerParameters(fingerprinterRegistry);
+    public TransformationInvocation<TransformationSubject> createInvocation(TransformationSubject subjectToTransform, ExecutionGraphDependenciesResolver dependenciesResolver, @Nullable ProjectExecutionServiceRegistry services) {
+        FileCollectionFingerprinterRegistry fingerprinterRegistry = prepareForExecution(subjectToTransform, services);
         Try<ArtifactTransformDependencies> resolvedDependencies = dependenciesResolver.forTransformer(transformer);
         return resolvedDependencies.getSuccessfulOrElse(dependencies -> {
             ImmutableList<File> inputArtifacts = subjectToTransform.getFiles();
             if (inputArtifacts.isEmpty()) {
-                return new TransformationContinuation<TransformationSubject>() {
+                return new TransformationInvocation<TransformationSubject>() {
                     @Override
                     public boolean isExpensive() {
                         return false;
@@ -141,7 +129,7 @@ public class TransformationStep implements Transformation, TaskDependencyContain
                 };
             }
             if (inputArtifacts.size() > 1) {
-                return new TransformationContinuation<TransformationSubject>() {
+                return new TransformationInvocation<TransformationSubject>() {
                     @Override
                     public boolean isExpensive() {
                         return true;
@@ -154,19 +142,19 @@ public class TransformationStep implements Transformation, TaskDependencyContain
                 };
             }
             File inputArtifact = inputArtifacts.iterator().next();
-            TransformationContinuation<ImmutableList<File>> continuation = transformerInvoker.prepareInvoke(transformer, inputArtifact, dependencies, subjectToTransform, fingerprinterRegistry);
-            return new TransformationContinuation<TransformationSubject>() {
+            TransformationInvocation<ImmutableList<File>> invocation = transformerInvoker.createInvocation(transformer, inputArtifact, dependencies, subjectToTransform, fingerprinterRegistry);
+            return new TransformationInvocation<TransformationSubject>() {
                 @Override
                 public boolean isExpensive() {
-                    return continuation.isExpensive();
+                    return invocation.isExpensive();
                 }
 
                 @Override
                 public Try<TransformationSubject> invoke() {
-                    return continuation.invoke().map(result -> subjectToTransform.createSubjectFromResult(result));
+                    return invocation.invoke().map(result -> subjectToTransform.createSubjectFromResult(result));
                 }
             };
-        }, failure -> new TransformationContinuation<TransformationSubject>() {
+        }, failure -> new TransformationInvocation<TransformationSubject>() {
 
             @Override
             public boolean isExpensive() {
@@ -178,6 +166,17 @@ public class TransformationStep implements Transformation, TaskDependencyContain
                 return Try.failure(failure);
             }
         });
+    }
+
+    private FileCollectionFingerprinterRegistry prepareForExecution(TransformationSubject subjectToTransform, @Nullable ProjectExecutionServiceRegistry services) {
+        if (LOGGER.isInfoEnabled()) {
+            LOGGER.info("Transforming {} with {}", subjectToTransform.getDisplayName(), transformer.getDisplayName());
+        }
+        FileCollectionFingerprinterRegistry fingerprinterRegistry = getFingerprinterRegistry(
+            owningProject != null && services != null ? services.getProjectService(owningProject, FileCollectionFingerprinterRegistry.class) : null
+        );
+        isolateTransformerParameters(fingerprinterRegistry);
+        return fingerprinterRegistry;
     }
 
     public FileCollectionFingerprinterRegistry getFingerprinterRegistry(@Nullable FileCollectionFingerprinterRegistry candidate) {

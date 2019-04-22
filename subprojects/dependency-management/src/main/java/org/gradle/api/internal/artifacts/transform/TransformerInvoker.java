@@ -33,5 +33,5 @@ public interface TransformerInvoker {
     /**
      * Returns the result of applying the given transformer to the given file.
      */
-    Transformation.TransformationContinuation<ImmutableList<File>> prepareInvoke(Transformer transformer, File inputArtifact, ArtifactTransformDependencies dependencies, TransformationSubject subject, FileCollectionFingerprinterRegistry fingerprinterRegistry);
+    TransformationInvocation<ImmutableList<File>> createInvocation(Transformer transformer, File inputArtifact, ArtifactTransformDependencies dependencies, TransformationSubject subject, FileCollectionFingerprinterRegistry fingerprinterRegistry);
 }
