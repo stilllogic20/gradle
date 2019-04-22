@@ -68,18 +68,45 @@ public class TransformationChain implements Transformation {
     @Override
     public TransformationContinuation<TransformationSubject> prepareTransform(TransformationSubject subjectToTransform, ExecutionGraphDependenciesResolver dependenciesResolver, @Nullable ProjectExecutionServiceRegistry services) {
         TransformationContinuation<TransformationSubject> continuation = first.prepareTransform(subjectToTransform, dependenciesResolver, services);
-        return new TransformationContinuation<TransformationSubject>() {
-            @Override
-            public boolean isExpensive() {
-                return continuation.isExpensive();
-            }
+        if (continuation.isExpensive()) {
+            return new TransformationContinuation<TransformationSubject>() {
+                @Override
+                public boolean isExpensive() {
+                    return true;
+                }
 
-            @Override
-            public Try<TransformationSubject> invoke() {
-                return continuation.invoke()
-                    .flatMap(intermediateSubject -> second.transform(intermediateSubject, dependenciesResolver, services));
-            }
-        };
+                @Override
+                public Try<TransformationSubject> invoke() {
+                    return continuation.invoke()
+                        .flatMap(intermediateSubject -> second.transform(intermediateSubject, dependenciesResolver, services));
+                }
+            };
+        }
+        return continuation.invoke()
+            .map(intermediateSubject -> second.prepareTransform(intermediateSubject, dependenciesResolver, services))
+            .getSuccessfulOrElse(invocation -> new TransformationContinuation<TransformationSubject>() {
+
+                @Override
+                public boolean isExpensive() {
+                    return invocation.isExpensive();
+                }
+
+                @Override
+                public Try<TransformationSubject> invoke() {
+                    return invocation.invoke();
+                }
+            }, failure -> new TransformationContinuation<TransformationSubject>() {
+
+                @Override
+                public boolean isExpensive() {
+                    return false;
+                }
+
+                @Override
+                public Try<TransformationSubject> invoke() {
+                    return Try.failure(failure);
+                }
+            });
     }
 
     @Override
