@@ -76,9 +76,11 @@ class RealLifeAndroidDexingTransformsPerformanceTest extends AbstractCrossBuildP
         assertDexingTransformIsFaster(results)
 
         where:
-        testProject         | memory | warmUpRuns | runs | tasksString           | enableCaches
-        'largeAndroidBuild' | '5g'   | 2          | 8    | 'clean assembleDebug' | true
-        'largeAndroidBuild' | '5g'   | 2          | 8    | 'clean assembleDebug' | false
+        testProject         | memory | warmUpRuns | runs | tasksString                    | enableCaches
+        'largeAndroidBuild' | '5g'   | 2          | 8    | 'clean assembleDebug'          | true
+        'largeAndroidBuild' | '5g'   | 2          | 8    | 'clean assembleDebug'          | false
+        'largeAndroidBuild' | '5g'   | 2          | 8    | 'clean phthalic:assembleDebug' | true
+        'largeAndroidBuild' | '5g'   | 2          | 8    | 'clean phthalic:assembleDebug' | false
         withOrWithout = enableCaches ? "with" : "without"
     }
 
@@ -99,7 +101,7 @@ class RealLifeAndroidDexingTransformsPerformanceTest extends AbstractCrossBuildP
             cleanTasks("clean")
             gradleOpts("-Xms${memory}", "-Xmx${memory}")
             useDaemon()
-            args("-Dorg.gradle.parallel=true", "-Pandroid.enableBuildCache=${options.enableAndroidBuildCache ?: true}", "-Pandroid.enableDexingArtifactTransform=${options.dexingTransforms}", '-Dcom.android.build.gradle.overrideVersionCheck=true')
+            args("-Dorg.gradle.parallel=true", "-Pandroid.enableBuildCache=${options.enableAndroidBuildCache ?: true}", "-Pandroid.enableDexingArtifactTransform=${options.dexingTransforms}", "-Pandroid.enableDexingArtifactTransform.desugaring=${options.dexingTransforms}", '-Dcom.android.build.gradle.overrideVersionCheck=true')
         }
 
     }
