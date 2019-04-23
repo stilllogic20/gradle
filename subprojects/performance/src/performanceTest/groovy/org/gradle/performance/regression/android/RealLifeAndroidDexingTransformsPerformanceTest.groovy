@@ -88,7 +88,17 @@ class RealLifeAndroidDexingTransformsPerformanceTest extends AbstractCrossBuildP
         new BuildExperimentListenerAdapter() {
             @Override
             void beforeInvocation(BuildExperimentInvocationInfo invocationInfo) {
-                GFileUtils.deleteDirectory(new File(invocationInfo.gradleUserHome, "caches/transforms-1/files-1.1"))
+                def transformsCaches = new File(invocationInfo.gradleUserHome, "caches").listFiles(new FilenameFilter() {
+                    @Override
+                    boolean accept(File dir, String name) {
+                        return name.startsWith("transforms-")
+                    }
+                })
+                if (transformsCaches != null) {
+                    for (transformsCache in transformsCaches) {
+                        GFileUtils.deleteDirectory(transformsCache)
+                    }
+                }
             }
         }
     }
