@@ -28,23 +28,18 @@ import org.gradle.internal.hash.Hasher;
 
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+
+import static java.util.Map.Entry.comparingByKey;
 
 /**
  * Compares by normalized path (relative/name only) and file contents. Order does not matter.
  */
 public class NormalizedPathFingerprintCompareStrategy extends AbstractFingerprintCompareStrategy {
     public static final FingerprintCompareStrategy INSTANCE = new NormalizedPathFingerprintCompareStrategy();
-
-    private static final Comparator<Entry<FileSystemLocationFingerprint, ?>> ENTRY_COMPARATOR = new Comparator<Entry<FileSystemLocationFingerprint, ?>>() {
-        @Override
-        public int compare(Entry<FileSystemLocationFingerprint, ?> o1, Entry<FileSystemLocationFingerprint, ?> o2) {
-            return o1.getKey().compareTo(o2.getKey());
-        }
-    };
 
     private NormalizedPathFingerprintCompareStrategy() {
     }
@@ -70,16 +65,16 @@ public class NormalizedPathFingerprintCompareStrategy extends AbstractFingerprin
         boolean shouldIncludeAdded
     ) {
         ListMultimap<FileSystemLocationFingerprint, FilePathWithType> missingPreviousFiles = getMissingPreviousFingerprints(previousFingerprints, currentFingerprints);
-        List<Entry<FileSystemLocationFingerprint, FilePathWithType>> missingPreviousEntries = Lists.newArrayList(missingPreviousFiles.entries());
-        Collections.sort(missingPreviousEntries, ENTRY_COMPARATOR);
-
         ListMultimap<String, FilePathWithType> addedFilesByNormalizedPath = getAddedFilesByNormalizedPath(currentFingerprints, missingPreviousFiles, previousFingerprints);
 
-        for (Entry<FileSystemLocationFingerprint, FilePathWithType> entry : missingPreviousEntries) {
+        Iterator<Entry<FileSystemLocationFingerprint, FilePathWithType>> iterator = missingPreviousFiles.entries().stream().sorted(comparingByKey()).iterator();
+        while (iterator.hasNext()) {
+            Entry<FileSystemLocationFingerprint, FilePathWithType> entry = iterator.next();
             FileSystemLocationFingerprint previousFingerprint = entry.getKey();
+            FilePathWithType pathWithType = entry.getValue();
+
             String normalizedPath = previousFingerprint.getNormalizedPath();
             FileType previousFingerprintType = previousFingerprint.getType();
-            FilePathWithType pathWithType = entry.getValue();
 
             if (wasModified(addedFilesByNormalizedPath, normalizedPath, pathWithType)) {
                 if (wasModifiedAndMessageCountSaturated(visitor, propertyTitle, previousFingerprintType, normalizedPath, pathWithType)) {
