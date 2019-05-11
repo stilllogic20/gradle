@@ -27,19 +27,14 @@ import org.apache.maven.wagon.events.*;
 import org.apache.maven.wagon.proxy.ProxyInfo;
 import org.apache.maven.wagon.proxy.ProxyInfoProvider;
 import org.apache.maven.wagon.repository.Repository;
-import org.apache.maven.wagon.resource.Resource;
 import org.gradle.api.GradleException;
 import org.gradle.internal.resource.local.FileReadableContent;
 import org.gradle.internal.resource.ReadableContent;
 
 import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.util.Date;
 import java.util.List;
 
 import static org.apache.maven.wagon.events.SessionEvent.*;
-import static org.apache.maven.wagon.events.TransferEvent.*;
 
 /**
  * A maven wagon intended to work with {@link org.apache.maven.artifact.manager.DefaultWagonManager} Maven uses reflection to initialize instances of this wagon see: {@link
@@ -51,7 +46,6 @@ public class RepositoryTransportDeployWagon implements Wagon {
     private static final ThreadLocal<RepositoryTransportWagonAdapter> CURRENT_DELEGATE = new InheritableThreadLocal<RepositoryTransportWagonAdapter>();
 
     private SessionEventSupport sessionEventSupport = new SessionEventSupport();
-    private TransferEventSupport transferEventSupport = new TransferEventSupport();
     private Repository mutatingRepository;
 
     public static void contextualize(RepositoryTransportWagonAdapter adapter) {
@@ -64,9 +58,6 @@ public class RepositoryTransportDeployWagon implements Wagon {
 
     @Override
     public final void get(String resourceName, File destination) throws TransferFailedException, ResourceDoesNotExistException, AuthorizationException {
-        Resource resource = new Resource(resourceName);
-        this.transferEventSupport.fireTransferInitiated(transferEvent(resource, TRANSFER_INITIATED, REQUEST_GET));
-        this.transferEventSupport.fireTransferStarted(transferEvent(resource, TRANSFER_STARTED, REQUEST_GET));
         try {
             if (!destination.exists()) {
                 destination.getParentFile().mkdirs();
@@ -75,28 +66,21 @@ public class RepositoryTransportDeployWagon implements Wagon {
             if (!getDelegate().getRemoteFile(destination, resourceName)) {
                 throw new ResourceDoesNotExistException(String.format("Resource '%s' does not exist", resourceName));
             }
-            this.transferEventSupport.fireTransferCompleted(transferEvent(resource, TRANSFER_COMPLETED, REQUEST_GET));
         } catch (ResourceDoesNotExistException e) {
-            this.transferEventSupport.fireTransferError(transferEvent(resource, e, REQUEST_GET));
             throw e;
         } catch (Exception e) {
-            this.transferEventSupport.fireTransferError(transferEvent(resource, e, REQUEST_GET));
             throw new TransferFailedException(String.format("Could not get resource '%s'", resourceName), e);
         }
     }
 
     @Override
     public final void put(File file, String resourceName) throws TransferFailedException, ResourceDoesNotExistException, AuthorizationException {
-        Resource resource = new Resource(resourceName);
-        this.transferEventSupport.fireTransferInitiated(transferEvent(resource, TRANSFER_INITIATED, REQUEST_PUT));
         try {
-            ReadableContent content = new MavenTransferLoggingFileResource(file, resource);
+            ReadableContent content = new FileReadableContent(file);
             getDelegate().putRemoteFile(content, resourceName);
         } catch (Exception e) {
-            this.transferEventSupport.fireTransferError(transferEvent(resource, e, REQUEST_PUT));
             throw new TransferFailedException(String.format("Could not write to resource '%s'", resourceName), e);
         }
-        this.transferEventSupport.fireTransferCompleted(transferEvent(resource, TRANSFER_COMPLETED, REQUEST_PUT));
     }
 
     private RepositoryTransportWagonAdapter getDelegate() {
@@ -196,17 +180,17 @@ public class RepositoryTransportDeployWagon implements Wagon {
 
     @Override
     public final void addTransferListener(TransferListener transferListener) {
-        this.transferEventSupport.addTransferListener(transferListener);
+
     }
 
     @Override
     public final void removeTransferListener(TransferListener transferListener) {
-        this.transferEventSupport.removeTransferListener(transferListener);
+
     }
 
     @Override
     public final boolean hasTransferListener(TransferListener transferListener) {
-        return this.transferEventSupport.hasTransferListener(transferListener);
+        return false;
     }
 
     @Override
@@ -245,69 +229,5 @@ public class RepositoryTransportDeployWagon implements Wagon {
 
     private void throwNotImplemented(String s) {
         throw new GradleException("This wagon does not yet support the method:" + s);
-    }
-
-    private TransferEvent transferEvent(Resource resource, int eventType, int requestType) {
-        TransferEvent transferEvent = new TransferEvent(this, resource, eventType, requestType);
-        transferEvent.setTimestamp(new Date().getTime());
-        return transferEvent;
-    }
-
-    private TransferEvent transferEvent(Resource resource, Exception e, int requestType) {
-        return new TransferEvent(this, resource, e, requestType);
-    }
-
-    private class MavenTransferLoggingFileResource extends FileReadableContent {
-        private final Resource resource;
-
-        private MavenTransferLoggingFileResource(File file, Resource resource) {
-            super(file);
-            this.resource = resource;
-        }
-
-        @Override
-        public InputStream open() {
-            // Need to do this here, so that the transfer is 'restarted' when HttpClient reopens the resource (DIGEST AUTH only)
-            transferEventSupport.fireTransferStarted(transferEvent(resource, TRANSFER_STARTED, REQUEST_PUT));
-            return new ObservingInputStream(super.open(), resource);
-        }
-
-        protected class ObservingInputStream extends InputStream {
-            private final InputStream inputStream;
-            private final TransferEvent transferEvent;
-            private final byte[] singleByteBuffer = new byte[1];
-
-            public ObservingInputStream(InputStream inputStream, Resource resource) {
-                this.inputStream = inputStream;
-                this.transferEvent = transferEvent(resource, TransferEvent.TRANSFER_PROGRESS, REQUEST_PUT);
-            }
-
-            @Override
-            public void close() throws IOException {
-                inputStream.close();
-            }
-
-            @Override
-            public int read() throws IOException {
-                int result = inputStream.read();
-                if (result >= 0) {
-                    singleByteBuffer[0] = (byte) result;
-                    logTransfer(singleByteBuffer, 1);
-                }
-                return result;
-            }
-
-            public int read(byte[] b, int off, int len) throws IOException {
-                int read = inputStream.read(b, off, len);
-                if (read > 0) {
-                    logTransfer(b, read);
-                }
-                return read;
-            }
-
-            private void logTransfer(byte[] bytes, int read) {
-                transferEventSupport.fireTransferProgress(transferEvent, bytes, read);
-            }
-        }
     }
 }
