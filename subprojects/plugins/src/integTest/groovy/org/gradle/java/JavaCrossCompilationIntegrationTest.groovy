@@ -26,7 +26,7 @@ import org.gradle.test.fixtures.file.ClassFile
 import org.gradle.util.TextUtil
 import org.junit.Assume
 
-@TargetVersions(["1.7", "1.8", "9"])
+@TargetVersions(["1.6", "1.7", "1.8", "9"])
 class JavaCrossCompilationIntegrationTest extends MultiVersionIntegrationSpec {
     JavaVersion getJavaVersion() {
         JavaVersion.toVersion(version)
