@@ -120,6 +120,19 @@ abstract class AbstractMavenPublishAction implements MavenPublishAction {
         }
     }
 
+    public boolean isManagedArtifact(File file) {
+        if (file.equals(mainArtifact.getFile())
+                || file.equals(pomArtifact.getFile())) {
+            return true;
+        }
+        for (Artifact artifact : attached) {
+            if (file.equals(artifact.getFile())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     protected abstract void publishArtifacts(Collection<Artifact> artifact, RepositorySystem repositorySystem, RepositorySystemSession session) throws RepositoryException;
 
     protected PlexusContainer getContainer() {

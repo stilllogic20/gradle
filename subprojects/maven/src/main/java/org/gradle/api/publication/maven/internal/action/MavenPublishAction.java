@@ -24,5 +24,7 @@ public interface MavenPublishAction {
 
     void addAdditionalArtifact(File file, String type, String classifier);
 
+    boolean isManagedArtifact(File file);
+
     void publish();
 }

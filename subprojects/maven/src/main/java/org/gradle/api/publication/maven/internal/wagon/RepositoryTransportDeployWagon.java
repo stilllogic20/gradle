@@ -16,7 +16,6 @@
 
 package org.gradle.api.publication.maven.internal.wagon;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.maven.wagon.ConnectionException;
 import org.apache.maven.wagon.ResourceDoesNotExistException;
 import org.apache.maven.wagon.TransferFailedException;
@@ -24,24 +23,22 @@ import org.apache.maven.wagon.Wagon;
 import org.apache.maven.wagon.authentication.AuthenticationException;
 import org.apache.maven.wagon.authentication.AuthenticationInfo;
 import org.apache.maven.wagon.authorization.AuthorizationException;
-import org.apache.maven.wagon.events.*;
+import org.apache.maven.wagon.events.SessionEvent;
+import org.apache.maven.wagon.events.SessionEventSupport;
+import org.apache.maven.wagon.events.SessionListener;
+import org.apache.maven.wagon.events.TransferListener;
 import org.apache.maven.wagon.proxy.ProxyInfo;
 import org.apache.maven.wagon.proxy.ProxyInfoProvider;
 import org.apache.maven.wagon.repository.Repository;
 import org.gradle.api.GradleException;
-import org.gradle.internal.UncheckedException;
-import org.gradle.internal.resource.local.ByteArrayReadableContent;
-import org.gradle.internal.resource.local.FileReadableContent;
-import org.gradle.internal.resource.ReadableContent;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileReader;
-import java.io.IOException;
 import java.util.List;
 
-import static org.apache.maven.wagon.events.SessionEvent.*;
+import static org.apache.maven.wagon.events.SessionEvent.SESSION_DISCONNECTING;
+import static org.apache.maven.wagon.events.SessionEvent.SESSION_LOGGED_IN;
+import static org.apache.maven.wagon.events.SessionEvent.SESSION_LOGGED_OFF;
+import static org.apache.maven.wagon.events.SessionEvent.SESSION_OPENED;
 
 /**
  * A maven wagon intended to work with {@link org.apache.maven.artifact.manager.DefaultWagonManager} Maven uses reflection to initialize instances of this wagon see: {@link
@@ -83,8 +80,7 @@ public class RepositoryTransportDeployWagon implements Wagon {
     @Override
     public final void put(File file, String resourceName) throws TransferFailedException, ResourceDoesNotExistException, AuthorizationException {
         try {
-            ReadableContent content = getContentFor(file);
-            getDelegate().putRemoteFile(content, resourceName);
+            getDelegate().putRemoteFile(file, resourceName);
         } catch (Exception e) {
             throw new TransferFailedException(String.format("Could not write to resource '%s'", resourceName), e);
         }
@@ -236,15 +232,5 @@ public class RepositoryTransportDeployWagon implements Wagon {
 
     private void throwNotImplemented(String s) {
         throw new GradleException("This wagon does not yet support the method:" + s);
-    }
-
-    private ReadableContent getContentFor(File file) {
-        ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        try {
-            IOUtils.copy(new FileInputStream(file), bos);
-        } catch (IOException e) {
-            throw UncheckedException.throwAsUncheckedException(e);
-        }
-        return new ByteArrayReadableContent(bos.toByteArray());
     }
 }

@@ -95,7 +95,7 @@ public class MavenRemotePublisher extends AbstractMavenPublisher {
             RepositoryTransport transport = repositoryTransportFactory.createTransport(protocol, artifactRepository.getName(),
                     ((AuthenticationSupportedInternal)artifactRepository).getConfiguredAuthentication());
             URI rootUri = artifactRepository.getUrl();
-            return new RepositoryTransportWagonAdapter(transport, rootUri);
+            return new RepositoryTransportWagonAdapter(this, transport, rootUri);
         }
     }
 }
