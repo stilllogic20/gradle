@@ -78,8 +78,7 @@ public class PublishToMavenRepository extends AbstractPublishToMaven {
             @Override
             protected void publish() throws Exception {
                 MavenPublisher remotePublisher = new MavenRemotePublisher(getMavenRepositoryLocator(), getTemporaryDirFactory(), getRepositoryTransportFactory());
-                MavenPublisher staticLockingPublisher = new StaticLockingMavenPublisher(remotePublisher);
-                MavenPublisher validatingPublisher = new ValidatingMavenPublisher(staticLockingPublisher);
+                MavenPublisher validatingPublisher = new ValidatingMavenPublisher(remotePublisher);
                 validatingPublisher.publish(publication.asNormalisedPublication(), repository);
             }
         }.run();

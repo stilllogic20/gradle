@@ -47,8 +47,12 @@ import java.net.MalformedURLException;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 abstract class AbstractMavenPublishAction implements MavenPublishAction {
+    private static final Lock STATIC_LOCK = new ReentrantLock();
+
     private final PlexusContainer container;
     private final DefaultRepositorySystemSession session;
     private final MavenProjectIdentity projectIdentity;
@@ -88,6 +92,15 @@ abstract class AbstractMavenPublishAction implements MavenPublishAction {
     }
 
     public void publish() {
+        STATIC_LOCK.lock();
+        try {
+            doPublish();
+        } finally {
+            STATIC_LOCK.unlock();
+        }
+    }
+
+    protected void doPublish() {
         List<Artifact> artifacts = new ArrayList<Artifact>();
         if (mainArtifact.getFile() != null) {
             artifacts.add(mainArtifact);

@@ -87,6 +87,8 @@ public class MavenRemotePublisher extends AbstractMavenPublisher {
             } finally {
                 RepositoryTransportDeployWagon.decontextualize();
             }
+
+            adapter.publishPending();
         }
 
         private RepositoryTransportWagonAdapter createAdapter(String protocol, MavenArtifactRepository artifactRepository, RepositoryTransportFactory repositoryTransportFactory) {

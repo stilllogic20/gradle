@@ -16,6 +16,7 @@
 
 package org.gradle.api.publication.maven.internal.wagon;
 
+import com.google.common.collect.Lists;
 import org.gradle.api.internal.artifacts.repositories.transport.RepositoryTransport;
 import org.gradle.api.resources.ResourceException;
 import org.gradle.internal.resource.ExternalResource;
@@ -24,10 +25,12 @@ import org.gradle.internal.resource.ReadableContent;
 
 import java.io.File;
 import java.net.URI;
+import java.util.List;
 
 public class RepositoryTransportWagonAdapter {
     private final RepositoryTransport transport;
     private final URI rootUri;
+    private final List<PutRequest> putRequests = Lists.newArrayList();
 
     public RepositoryTransportWagonAdapter(RepositoryTransport transport, URI rootUri) {
         this.transport = transport;
@@ -41,10 +44,26 @@ public class RepositoryTransportWagonAdapter {
     }
 
     public void putRemoteFile(ReadableContent content, String resourceName) throws ResourceException {
-        transport.getRepository().withProgressLogging().resource(getLocationForResource(resourceName)).put(content);
+        putRequests.add(new PutRequest(resourceName, content));
+    }
+
+    public void publishPending() {
+        for (PutRequest putRequest : putRequests) {
+            transport.getRepository().withProgressLogging().resource(getLocationForResource(putRequest.resourceName)).put(putRequest.content);
+        }
     }
 
     private ExternalResourceName getLocationForResource(String resource) {
         return new ExternalResourceName(rootUri, resource);
+    }
+
+    private class PutRequest {
+        final String resourceName;
+        final ReadableContent content;
+
+        public PutRequest(String resourceName, ReadableContent content) {
+            this.resourceName = resourceName;
+            this.content = content;
+        }
     }
 }

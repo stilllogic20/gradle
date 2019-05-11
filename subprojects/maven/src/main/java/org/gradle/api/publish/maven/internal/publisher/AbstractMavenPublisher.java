@@ -42,7 +42,7 @@ public abstract class AbstractMavenPublisher implements MavenPublisher {
 
         MavenPublishAction deployTask = createDeployTask(publication.getPackaging(), publication.getProjectIdentity(), mavenRepositoryLocator, artifactRepository);
         addPomAndArtifacts(deployTask, publication);
-        execute(deployTask);
+        deployTask.publish();
     }
 
     abstract protected MavenPublishAction createDeployTask(String packaging, MavenProjectIdentity projectIdentity, LocalMavenRepositoryLocator mavenRepositoryLocator, MavenArtifactRepository artifactRepository);
@@ -64,7 +64,4 @@ public abstract class AbstractMavenPublisher implements MavenPublisher {
         }
     }
 
-    private void execute(MavenPublishAction publishAction) {
-        publishAction.publish();
-    }
 }
