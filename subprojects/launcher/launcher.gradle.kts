@@ -8,8 +8,9 @@ plugins {
 }
 
 dependencies {
-    compile(project(":launcherBootstrap"))
-    compile(project(":launcherStartup"))
+
+    compileOnly(project(":launcherBootstrap"))
+    compileOnly(project(":launcherStartup"))
 
     compile(project(":baseServices"))
     compile(project(":jvmServices"))
@@ -70,10 +71,14 @@ integTestTasks.configureEach {
 
 val configureJar by tasks.registering {
     doLast {
-        val classpath = listOf(":launcherStartup", ":baseServices", ":coreApi", ":core").joinToString(" ") {
+        val classpath = listOf(":baseServices", ":coreApi", ":core").joinToString(" ") {
             project(it).tasks.jar.get().archiveFile.get().asFile.name
         }
-        tasks.jar.get().manifest.attributes("Class-Path" to classpath)
+        tasks.jar {
+            from(project(":launcherBootstrap").sourceSets["main"].output.files)
+            from(project(":launcherStartup").sourceSets["main"].output.files)
+            manifest.attributes("Class-Path" to classpath)
+        }
     }
 }
 
@@ -82,17 +87,9 @@ tasks.jar {
     manifest.attributes("Main-Class" to "org.gradle.launcher.GradleMain")
 }
 
-val launcherBootstrap by configurations.creating
-dependencies {
-    launcherBootstrap(project(":launcherBootstrap")) {
-        isTransitive = false
-    }
-}
-
 val startScripts = tasks.register<GradleStartScriptGenerator>("startScripts") {
     startScriptsDir = file("$buildDir/startScripts")
     launcherBootstrapClasspathFiles.from(tasks.jar.get().outputs.files)
-    launcherBootstrapClasspathFiles.from(launcherBootstrap)
 }
 
 configurations {
