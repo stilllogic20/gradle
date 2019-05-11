@@ -110,6 +110,9 @@ dependencies {
 }
 
 def checkBinaryCompatibility = tasks.register("checkBinaryCompatibility", JapicmpTask) {
+    // Disabled because of a bug
+    enabled = false
+
     dependsOn ProjectGroups.INSTANCE.getPublicProjects(project).jar
 
     Set<File> apiSourceFolders = ProjectGroups.INSTANCE.getPublicJavaProjects(project).collectMany { Project p ->
