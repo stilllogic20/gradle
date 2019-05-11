@@ -8,7 +8,8 @@ plugins {
 }
 
 dependencies {
-    compile(project(":startup"))
+    compile(project(":launcherBootstrap"))
+    compile(project(":launcherStartup"))
 
     compile(project(":baseServices"))
     compile(project(":jvmServices"))

@@ -5,6 +5,8 @@ plugins {
 }
 
 dependencies {
+    compile(project(":launcherBootstrap"))
+
     compile(project(":baseServices"))
     compile(project(":jvmServices"))
     compile(project(":core"))
