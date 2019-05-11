@@ -56,7 +56,7 @@ enum class ModuleType(val compatibility: JavaVersion) {
      * the codebase are executed from builds, if only to print a message
      * indicating that the old JDK is not supported anymore.
      */
-    ENTRY_POINT(JavaVersion.VERSION_1_6),
+    ENTRY_POINT(JavaVersion.VERSION_1_8),
 
     /**
      * This module type is used by modules that contain code that needs to
@@ -65,7 +65,7 @@ enum class ModuleType(val compatibility: JavaVersion) {
      * Some of these modules use APIs that are not available in the specified
      * Java version but only in parts that are not called from workers.
      */
-    WORKER(JavaVersion.VERSION_1_6),
+    WORKER(JavaVersion.VERSION_1_8),
 
     /**
      * This module type is used by all modules that end up in the distribution
