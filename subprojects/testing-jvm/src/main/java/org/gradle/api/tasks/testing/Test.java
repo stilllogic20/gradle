@@ -39,6 +39,8 @@ import org.gradle.api.internal.tasks.testing.junit.JUnitTestFramework;
 import org.gradle.api.internal.tasks.testing.junit.result.TestClassResult;
 import org.gradle.api.internal.tasks.testing.junit.result.TestResultSerializer;
 import org.gradle.api.internal.tasks.testing.junitplatform.JUnitPlatformTestFramework;
+import org.gradle.api.internal.tasks.testing.precog.DefaultPrecogTestFilter;
+import org.gradle.api.internal.tasks.testing.precog.PrecogTestFilter;
 import org.gradle.api.internal.tasks.testing.testng.TestNGTestFramework;
 import org.gradle.api.specs.Spec;
 import org.gradle.api.tasks.CacheableTask;
@@ -149,11 +151,13 @@ public class Test extends AbstractTestTask implements JavaForkOptions, PatternFi
     private long forkEvery;
     private int maxParallelForks = 1;
     private TestExecuter<JvmTestExecutionSpec> testExecuter;
+    private PrecogTestFilter precogTestFilter;
 
     public Test() {
         patternSet = getFileResolver().getPatternSetFactory().create();
         forkOptions = getForkOptionsFactory().newJavaForkOptions();
         forkOptions.setEnableAssertions(true);
+        precogTestFilter = new DefaultPrecogTestFilter();
     }
 
     @Inject
@@ -606,7 +610,7 @@ public class Test extends AbstractTestTask implements JavaForkOptions, PatternFi
                 getServices().get(StartParameter.class).getMaxWorkerCount(),
                 getServices().get(Clock.class),
                 getServices().get(DocumentationRegistry.class),
-                (DefaultTestFilter) getFilter());
+                (DefaultTestFilter) getFilter(), precogTestFilter);
         } else {
             return testExecuter;
         }
