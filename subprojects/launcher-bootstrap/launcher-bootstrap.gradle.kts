@@ -15,12 +15,3 @@ dependencies {
 gradlebuildJava {
     moduleType = ModuleType.ENTRY_POINT
 }
-
-tasks {
-    classpathManifest {
-        enabled = false
-    }
-    parameterNamesIndex {
-        enabled = false
-    }
-}

@@ -30,12 +30,3 @@ dependencies {
 gradlebuildJava {
     moduleType = ModuleType.CORE
 }
-
-tasks {
-    classpathManifest {
-        enabled = false
-    }
-    parameterNamesIndex {
-        enabled = false
-    }
-}
