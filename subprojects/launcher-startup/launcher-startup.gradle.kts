@@ -1,26 +1,30 @@
 import org.gradle.gradlebuild.unittestandcompile.ModuleType
 
 plugins {
+    `java-library`
     gradlebuild.classycle
 }
 
 dependencies {
-    compile(project(":launcherBootstrap"))
+    api(project(":cli"))
 
-    compile(project(":baseServices"))
+    compile(project(":coreApi"))
+    compile(project(":launcherBootstrap"))
     compile(project(":jvmServices"))
     compile(project(":core"))
-    compile(project(":cli"))
     compile(project(":buildOption"))
     compile(project(":toolingApi"))
     compile(project(":native"))
     compile(project(":logging"))
-    compile(project(":docs"))
+    compile(project(":messaging"))
+    compile(project(":baseServices"))
+    compile(project(":files"))
 
+    compile(library("guava"))
     compile(library("asm"))
     compile(library("commons_io"))
     compile(library("commons_lang"))
-    compile(library("slf4j_api"))
+    compile(library("ant"))
 }
 
 gradlebuildJava {
