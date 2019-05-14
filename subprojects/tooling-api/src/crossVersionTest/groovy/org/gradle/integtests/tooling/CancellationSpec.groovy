@@ -74,10 +74,8 @@ latch.await()
         resultHandler.assertFailedWith(BuildCancelledException)
         assert resultHandler.failure.message.startsWith(failureMessage)
 
-        if (targetIsGradle51OrLater()) {
-            // https://github.com/gradle/gradle-private/issues/1760
-            assert resultHandler.failure.cause.message in ["Build cancelled.", "Daemon was stopped to handle build cancel request."]
-        }
+        verifyBuildCancelledExceptionMessage(resultHandler)
+
         def failure = OutputScrapingExecutionFailure.from(stdout.toString(), stderr.toString())
         failure.assertHasDescription('Build cancelled.')
         assertHasBuildFailedLogging()
@@ -87,15 +85,20 @@ latch.await()
         targetVersion >= GradleVersion.version('5.1')
     }
 
+    private static void verifyBuildCancelledExceptionMessage(TestResultHandler resultHandler) {
+        if (targetIsGradle51OrLater()) {
+            // https://github.com/gradle/gradle-private/issues/1760
+            assert resultHandler.failure.cause.message in ["Build cancelled.", "Daemon was stopped to handle build cancel request."]
+        }
+    }
+
     void configureWasCancelled(TestResultHandler resultHandler, String failureMessage) {
         resultHandler.assertFailedWith(BuildCancelledException)
         assert resultHandler.failure.message.startsWith(failureMessage)
 
         // Verify there is a cause that explains that the build was cancelled (and where).
         // Some versions do not included this
-        if (targetDist.toolingApiHasCauseOnCancel) {
-            assert resultHandler.failure.cause.message == "Build cancelled."
-        }
+        verifyBuildCancelledExceptionMessage(resultHandler)
 
         // Verify that there is some logging output that explains that the build was cancelled.
         // Some versions do not log anything on build cancellation
