@@ -113,40 +113,15 @@ public class DefaultTransformerInvoker implements TransformerInvoker {
 
     @Override
     public Try<ImmutableList<File>> invoke(Transformer transformer, File inputArtifact, ArtifactTransformDependencies dependencies, TransformationSubject subject, FileCollectionFingerprinterRegistry fingerprinterRegistry) {
-        return prepare(transformer, inputArtifact, dependencies, subject, fingerprinterRegistry).invoke();
+        return createCacheableInvocation(transformer, inputArtifact, dependencies, subject, fingerprinterRegistry).invoke();
     }
 
     @Override
-    public TransformationInvocation<ImmutableList<File>> createInvocation(Transformer transformer, File inputArtifact, ArtifactTransformDependencies dependencies, TransformationSubject subject, FileCollectionFingerprinterRegistry fingerprinterRegistry) {
-        PreparedInvocation preparedInvocation = prepare(transformer, inputArtifact, dependencies, subject, fingerprinterRegistry);
-        Try<ImmutableList<File>> cachedResult = preparedInvocation.getCachedResult();
-        return (cachedResult != null)
-            ? new TransformationInvocation<ImmutableList<File>>() {
-
-            @Override
-            public boolean isExpensive() {
-                return false;
-            }
-
-            @Override
-            public Try<ImmutableList<File>> invoke() {
-                return cachedResult;
-            }
-        }
-            : new TransformationInvocation<ImmutableList<File>>() {
-            @Override
-            public boolean isExpensive() {
-                return true;
-            }
-
-            @Override
-            public Try<ImmutableList<File>> invoke() {
-                return preparedInvocation.invoke();
-            }
-        };
+    public CacheableInvocation<ImmutableList<File>> createInvocation(Transformer transformer, File inputArtifact, ArtifactTransformDependencies dependencies, TransformationSubject subject, FileCollectionFingerprinterRegistry fingerprinterRegistry) {
+        return createCacheableInvocation(transformer, inputArtifact, dependencies, subject, fingerprinterRegistry);
     }
 
-    private PreparedInvocation prepare(Transformer transformer, File inputArtifact, ArtifactTransformDependencies dependencies, TransformationSubject subject, FileCollectionFingerprinterRegistry fingerprinterRegistry) {
+    private CacheableInvocation<ImmutableList<File>> createCacheableInvocation(Transformer transformer, File inputArtifact, ArtifactTransformDependencies dependencies, TransformationSubject subject, FileCollectionFingerprinterRegistry fingerprinterRegistry) {
         FileCollectionFingerprinter dependencyFingerprinter = fingerprinterRegistry.getFingerprinter(transformer.getInputArtifactDependenciesNormalizer());
         CurrentFileCollectionFingerprint dependenciesFingerprint = dependencies.fingerprint(dependencyFingerprinter);
         ProjectInternal producerProject = determineProducerProject(subject);
@@ -155,10 +130,14 @@ public class DefaultTransformerInvoker implements TransformerInvoker {
         FileCollectionFingerprinter inputArtifactFingerprinter = fingerprinterRegistry.getFingerprinter(transformer.getInputArtifactNormalizer());
         String normalizedInputPath = inputArtifactFingerprinter.normalizePath(inputArtifactSnapshot);
         TransformationWorkspaceIdentity identity = getTransformationIdentity(producerProject, inputArtifactSnapshot, normalizedInputPath, transformer, dependenciesFingerprint);
-        return new PreparedInvocation() {
+        return new CacheableInvocation<ImmutableList<File>>() {
+            private Try<ImmutableList<File>> cachedResult;
+
             @Override
             public Try<ImmutableList<File>> invoke() {
-                return workspaceProvider.withWorkspace(identity, (identityString, workspace) -> buildOperationExecutor.call(new CallableBuildOperation<Try<ImmutableList<File>>>() {
+                return cachedResult != null
+                    ? cachedResult
+                    : workspaceProvider.withWorkspace(identity, (identityString, workspace) -> buildOperationExecutor.call(new CallableBuildOperation<Try<ImmutableList<File>>>() {
                     @Override
                     public Try<ImmutableList<File>> call(BuildOperationContext context) {
                         return fireTransformListeners(transformer, subject, () -> {
@@ -229,18 +208,12 @@ public class DefaultTransformerInvoker implements TransformerInvoker {
                 }));
             }
 
-            @Nullable
             @Override
-            public Try<ImmutableList<File>> getCachedResult() {
-                return workspaceProvider.getCachedResult(identity);
+            public Optional<Try<ImmutableList<File>>> getCachedResult() {
+                cachedResult = workspaceProvider.getCachedResult(identity);
+                return Optional.ofNullable(cachedResult);
             }
         };
-    }
-
-    private interface PreparedInvocation {
-        Try<ImmutableList<File>> invoke();
-        @Nullable
-        Try<ImmutableList<File>> getCachedResult();
     }
 
     private TransformationWorkspaceIdentity getTransformationIdentity(@Nullable ProjectInternal project, FileSystemLocationSnapshot inputArtifactSnapshot, String inputArtifactPath, Transformer transformer, CurrentFileCollectionFingerprint dependenciesFingerprint) {

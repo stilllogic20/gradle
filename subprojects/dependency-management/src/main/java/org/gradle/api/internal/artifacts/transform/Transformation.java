@@ -39,7 +39,7 @@ public interface Transformation extends Describable {
      */
     Try<TransformationSubject> transform(TransformationSubject subjectToTransform, ExecutionGraphDependenciesResolver dependenciesResolver, @Nullable ProjectExecutionServiceRegistry services);
 
-    TransformationInvocation<TransformationSubject> createInvocation(TransformationSubject subjectToTransform, ExecutionGraphDependenciesResolver dependenciesResolver, @Nullable ProjectExecutionServiceRegistry services);
+    CacheableInvocation<TransformationSubject> createInvocation(TransformationSubject subjectToTransform, ExecutionGraphDependenciesResolver dependenciesResolver, @Nullable ProjectExecutionServiceRegistry services);
 
     /**
      * Whether the transformation requires dependencies of the transformed artifact to be injected.

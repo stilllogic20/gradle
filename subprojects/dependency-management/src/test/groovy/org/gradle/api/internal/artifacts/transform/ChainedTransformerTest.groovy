@@ -64,18 +64,8 @@ class ChainedTransformerTest extends Specification {
 
     abstract class AbstractTestTransformation implements Transformation {
         @Override
-        TransformationInvocation<TransformationSubject> createInvocation(TransformationSubject subjectToTransform, ExecutionGraphDependenciesResolver dependenciesResolver, @Nullable ProjectExecutionServiceRegistry services) {
-            return new TransformationInvocation<TransformationSubject>() {
-                @Override
-                boolean isExpensive() {
-                    return true
-                }
-
-                @Override
-                Try<TransformationSubject> invoke() {
-                    return transform(subjectToTransform, dependenciesResolver, services)
-                }
-            }
+        CacheableInvocation<TransformationSubject> createInvocation(TransformationSubject subjectToTransform, ExecutionGraphDependenciesResolver dependenciesResolver, @Nullable ProjectExecutionServiceRegistry services) {
+            return CacheableInvocation.nonCached { transform(subjectToTransform, dependenciesResolver, services) }
         }
 
         @Override

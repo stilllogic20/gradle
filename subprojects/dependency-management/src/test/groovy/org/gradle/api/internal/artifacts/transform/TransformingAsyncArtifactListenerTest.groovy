@@ -28,7 +28,7 @@ import spock.lang.Unroll
 
 class TransformingAsyncArtifactListenerTest extends Specification {
     def transformation = Mock(Transformation)
-    def invocation = Mock(TransformationInvocation)
+    CacheableInvocation<TransformationSubject> invocation = Mock(CacheableInvocation)
     def operationQueue = Mock(BuildOperationQueue)
     def transformationNodeRegistry = Mock(TransformationNodeRegistry)
     def listener  = new TransformingAsyncArtifactListener(transformation, null, operationQueue, Maps.newHashMap(), Maps.newHashMap(), Mock(ExecutionGraphDependenciesResolver), transformationNodeRegistry)
@@ -51,7 +51,7 @@ class TransformingAsyncArtifactListenerTest extends Specification {
             1 * transformationNodeRegistry.getIfExecuted(artifactId, transformation) >> Optional.empty()
         }
         1 * transformation.createInvocation(_, _, _) >> invocation
-        1 * invocation.expensive >> true
+        1 * invocation.getCachedResult() >> Optional.empty()
         1 * operationQueue.add(_ as BuildOperation)
 
         where:
@@ -68,8 +68,7 @@ class TransformingAsyncArtifactListenerTest extends Specification {
             1 * transformationNodeRegistry.getIfExecuted(artifactId, transformation) >> Optional.empty()
         }
         1 * transformation.createInvocation({ it.files == [this."${type == 'file' ? 'file' : 'artifactFile'}"] }, _ as ExecutionGraphDependenciesResolver, _) >> invocation
-        1 * invocation.expensive >> false
-        1 * invocation.invoke()
+        1 * invocation.getCachedResult() >> Optional.of(Try.successful(TransformationSubject.initial(file)))
 
         where:
         type << ['file', 'artifact']

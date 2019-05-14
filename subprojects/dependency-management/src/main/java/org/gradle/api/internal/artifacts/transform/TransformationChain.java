@@ -66,47 +66,9 @@ public class TransformationChain implements Transformation {
     }
 
     @Override
-    public TransformationInvocation<TransformationSubject> createInvocation(TransformationSubject subjectToTransform, ExecutionGraphDependenciesResolver dependenciesResolver, @Nullable ProjectExecutionServiceRegistry services) {
-        TransformationInvocation<TransformationSubject> invocation = first.createInvocation(subjectToTransform, dependenciesResolver, services);
-        if (invocation.isExpensive()) {
-            return new TransformationInvocation<TransformationSubject>() {
-                @Override
-                public boolean isExpensive() {
-                    return true;
-                }
-
-                @Override
-                public Try<TransformationSubject> invoke() {
-                    return invocation.invoke()
-                        .flatMap(intermediateSubject -> second.transform(intermediateSubject, dependenciesResolver, services));
-                }
-            };
-        }
-        return invocation.invoke()
-            .map(intermediateSubject -> second.createInvocation(intermediateSubject, dependenciesResolver, services))
-            .getSuccessfulOrElse(secondInvocation -> new TransformationInvocation<TransformationSubject>() {
-
-                @Override
-                public boolean isExpensive() {
-                    return secondInvocation.isExpensive();
-                }
-
-                @Override
-                public Try<TransformationSubject> invoke() {
-                    return secondInvocation.invoke();
-                }
-            }, failure -> new TransformationInvocation<TransformationSubject>() {
-
-                @Override
-                public boolean isExpensive() {
-                    return false;
-                }
-
-                @Override
-                public Try<TransformationSubject> invoke() {
-                    return Try.failure(failure);
-                }
-            });
+    public CacheableInvocation<TransformationSubject> createInvocation(TransformationSubject subjectToTransform, ExecutionGraphDependenciesResolver dependenciesResolver, @Nullable ProjectExecutionServiceRegistry services) {
+        CacheableInvocation<TransformationSubject> invocation = first.createInvocation(subjectToTransform, dependenciesResolver, services);
+        return invocation.flatMap(intermediate -> second.createInvocation(intermediate, dependenciesResolver, services));
     }
 
     @Override

@@ -110,62 +110,23 @@ public class TransformationStep implements Transformation, TaskDependencyContain
     }
 
     @Override
-    public TransformationInvocation<TransformationSubject> createInvocation(TransformationSubject subjectToTransform, ExecutionGraphDependenciesResolver dependenciesResolver, @Nullable ProjectExecutionServiceRegistry services) {
+    public CacheableInvocation<TransformationSubject> createInvocation(TransformationSubject subjectToTransform, ExecutionGraphDependenciesResolver dependenciesResolver, @Nullable ProjectExecutionServiceRegistry services) {
         FileCollectionFingerprinterRegistry fingerprinterRegistry = prepareForExecution(subjectToTransform, services);
         Try<ArtifactTransformDependencies> resolvedDependencies = dependenciesResolver.forTransformer(transformer);
         return resolvedDependencies.getSuccessfulOrElse(dependencies -> {
             ImmutableList<File> inputArtifacts = subjectToTransform.getFiles();
             if (inputArtifacts.isEmpty()) {
-                return new TransformationInvocation<TransformationSubject>() {
-                    @Override
-                    public boolean isExpensive() {
-                        return false;
-                    }
-
-                    @Override
-                    public Try<TransformationSubject> invoke() {
-                        return Try.successful(subjectToTransform.createSubjectFromResult(ImmutableList.of()));
-                    }
-                };
+                return CacheableInvocation.cached(Try.successful(subjectToTransform.createSubjectFromResult(ImmutableList.of())));
+            } else if (inputArtifacts.size() > 1) {
+                return CacheableInvocation.nonCached(() ->
+                        doTransform(subjectToTransform, fingerprinterRegistry, dependencies, inputArtifacts)
+                );
+            } else {
+                File inputArtifact = inputArtifacts.iterator().next();
+                return transformerInvoker.createInvocation(transformer, inputArtifact, dependencies, subjectToTransform, fingerprinterRegistry)
+                    .map(subjectToTransform::createSubjectFromResult);
             }
-            if (inputArtifacts.size() > 1) {
-                return new TransformationInvocation<TransformationSubject>() {
-                    @Override
-                    public boolean isExpensive() {
-                        return true;
-                    }
-
-                    @Override
-                    public Try<TransformationSubject> invoke() {
-                        return doTransform(subjectToTransform, fingerprinterRegistry, dependencies, inputArtifacts);
-                    }
-                };
-            }
-            File inputArtifact = inputArtifacts.iterator().next();
-            TransformationInvocation<ImmutableList<File>> invocation = transformerInvoker.createInvocation(transformer, inputArtifact, dependencies, subjectToTransform, fingerprinterRegistry);
-            return new TransformationInvocation<TransformationSubject>() {
-                @Override
-                public boolean isExpensive() {
-                    return invocation.isExpensive();
-                }
-
-                @Override
-                public Try<TransformationSubject> invoke() {
-                    return invocation.invoke().map(result -> subjectToTransform.createSubjectFromResult(result));
-                }
-            };
-        }, failure -> new TransformationInvocation<TransformationSubject>() {
-
-            @Override
-            public boolean isExpensive() {
-                return false;
-            }
-
-            @Override
-            public Try<TransformationSubject> invoke() {
-                return Try.failure(failure);
-            }
-        });
+        }, failure -> CacheableInvocation.cached(Try.failure(failure)));
     }
 
     private FileCollectionFingerprinterRegistry prepareForExecution(TransformationSubject subjectToTransform, @Nullable ProjectExecutionServiceRegistry services) {

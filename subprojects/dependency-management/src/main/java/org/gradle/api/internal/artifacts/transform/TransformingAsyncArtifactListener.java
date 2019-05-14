@@ -62,14 +62,20 @@ class TransformingAsyncArtifactListener implements ResolvedArtifactSet.AsyncArti
         } else {
             File file = artifact.getFile();
             TransformationSubject initialSubject = TransformationSubject.initial(artifactId, file);
-            TransformationOperation operation = new TransformationOperation(transformation, initialSubject, dependenciesResolver);
-            artifactResults.put(artifactId, operation);
-            if (operation.isExpensive()) {
-                actions.add(operation);
-            } else {
-                operation.run(null);
-            }
+            TransformationResult result = createTransformationResult(initialSubject);
+            artifactResults.put(artifactId, result);
         }
+    }
+
+    private TransformationResult createTransformationResult(TransformationSubject initialSubject) {
+        CacheableInvocation<TransformationSubject> invocation = transformation.createInvocation(initialSubject, dependenciesResolver, null);
+        return invocation.getCachedResult()
+            .<TransformationResult>map(PrecomputedTransformationResult::new)
+            .orElseGet(() -> {
+                TransformationOperation operation = new TransformationOperation(invocation, "Transform " + initialSubject.getDisplayName() + " with " + transformation.getDisplayName());
+                actions.add(operation);
+                return operation;
+            });
     }
 
     @Override
@@ -86,12 +92,7 @@ class TransformingAsyncArtifactListener implements ResolvedArtifactSet.AsyncArti
     @Override
     public void fileAvailable(File file) {
         TransformationSubject initialSubject = TransformationSubject.initial(file);
-        TransformationOperation operation = new TransformationOperation(transformation, initialSubject, dependenciesResolver);
-        fileResults.put(file, operation);
-        if (operation.isExpensive()) {
-            actions.add(operation);
-        } else {
-            operation.run(null);
-        }
+        TransformationResult transformationResult = createTransformationResult(initialSubject);
+        fileResults.put(file, transformationResult);
     }
 }
