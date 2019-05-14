@@ -87,18 +87,22 @@ public class NormalizedPathFingerprintCompareStrategy extends AbstractFingerprin
             String normalizedPath = previousFingerprint.getNormalizedPath();
             FileType previousFingerprintType = previousFingerprint.getType();
 
+            DefaultFileChange change;
             if (wasModified(addedFilesByNormalizedPath, normalizedPath, pathWithType)) {
-                if (wasModifiedAndMessageCountSaturated(visitor, propertyTitle, previousFingerprintType, normalizedPath, pathWithType)) {
-                    return false; // TODO
-                }
-            } else if (wasRemovedAndMessageCountSaturated(visitor, propertyTitle, normalizedPath, pathWithType)) {
-                return false; // TODO
+                change = modified(propertyTitle, previousFingerprintType, normalizedPath, pathWithType);
+            } else {
+                change = removed(propertyTitle, normalizedPath, pathWithType);
+            }
+
+            if (!visitor.visitChange(change)) {
+                return false;
             }
         }
 
         for (Entry<String, FilePathWithType> entry : addedFilesByNormalizedPath.entries()) {
-            if (wasAddedAndMessageCountSaturated(visitor, propertyTitle, entry)) {
-                return false; // TODO
+            DefaultFileChange added = added(propertyTitle, entry);
+            if (!visitor.visitChange(added)) {
+                return false;
             }
         }
         return true;
@@ -165,8 +169,7 @@ public class NormalizedPathFingerprintCompareStrategy extends AbstractFingerprin
         return results;
     }
 
-    private static boolean wasModifiedAndMessageCountSaturated(
-        ChangeVisitor visitor,
+    private static DefaultFileChange modified(
         String propertyTitle,
         FileType previousFingerprintType,
         String normalizedPath,
@@ -174,24 +177,20 @@ public class NormalizedPathFingerprintCompareStrategy extends AbstractFingerprin
     ) {
         String absolutePath = modifiedFile.getAbsolutePath();
         FileType fileType = modifiedFile.getFileType();
-        DefaultFileChange modified = DefaultFileChange.modified(absolutePath, propertyTitle, previousFingerprintType, fileType, normalizedPath);
-        return !visitor.visitChange(modified);
+        return DefaultFileChange.modified(absolutePath, propertyTitle, previousFingerprintType, fileType, normalizedPath);
     }
 
-    private static boolean wasRemovedAndMessageCountSaturated(
-        ChangeVisitor visitor,
+    private static DefaultFileChange removed(
         String propertyTitle,
         String normalizedPath,
         FilePathWithType removedFile
     ) {
         String absolutePath = removedFile.getAbsolutePath();
         FileType fileType = removedFile.getFileType();
-        DefaultFileChange removed = DefaultFileChange.removed(absolutePath, propertyTitle, fileType, normalizedPath);
-        return !visitor.visitChange(removed);
+        return DefaultFileChange.removed(absolutePath, propertyTitle, fileType, normalizedPath);
     }
 
-    private static boolean wasAddedAndMessageCountSaturated(
-        ChangeVisitor visitor,
+    private static DefaultFileChange added(
         String propertyTitle,
         Entry<String, FilePathWithType> addedFilesByNormalizedPathEntries
     ) {
@@ -199,8 +198,7 @@ public class NormalizedPathFingerprintCompareStrategy extends AbstractFingerprin
         String absolutePath = addedFile.getAbsolutePath();
         FileType fileType = addedFile.getFileType();
         String normalizedPath = addedFilesByNormalizedPathEntries.getKey();
-        DefaultFileChange added = DefaultFileChange.added(absolutePath, propertyTitle, fileType, normalizedPath);
-        return !visitor.visitChange(added);
+        return DefaultFileChange.added(absolutePath, propertyTitle, fileType, normalizedPath);
     }
 
     @Override
