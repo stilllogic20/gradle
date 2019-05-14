@@ -16,6 +16,7 @@
 
 package org.gradle.internal.fingerprint.impl;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ListMultimap;
 import com.google.common.collect.Lists;
 import com.google.common.collect.MultimapBuilder;
@@ -64,6 +65,16 @@ public class NormalizedPathFingerprintCompareStrategy extends AbstractFingerprin
         String propertyTitle,
         boolean shouldIncludeAdded
     ) {
+        Preconditions.checkArgument(shouldIncludeAdded);
+        return doVisitChangesSince(visitor, currentFingerprints, previousFingerprints, propertyTitle);
+    }
+
+    private boolean doVisitChangesSince(
+        ChangeVisitor visitor,
+        Map<String, FileSystemLocationFingerprint> currentFingerprints,
+        Map<String, FileSystemLocationFingerprint> previousFingerprints,
+        String propertyTitle
+    ) {
         ListMultimap<FileSystemLocationFingerprint, FilePathWithType> missingPreviousFiles = getMissingPreviousFingerprints(previousFingerprints, currentFingerprints);
         ListMultimap<String, FilePathWithType> addedFilesByNormalizedPath = getAddedFilesByNormalizedPath(currentFingerprints, missingPreviousFiles, previousFingerprints);
 
@@ -85,11 +96,9 @@ public class NormalizedPathFingerprintCompareStrategy extends AbstractFingerprin
             }
         }
 
-        if (shouldIncludeAdded) {
-            for (Entry<String, FilePathWithType> entry : addedFilesByNormalizedPath.entries()) {
-                if (wasAddedAndMessageCountSaturated(visitor, propertyTitle, entry)) {
-                    return false; // TODO
-                }
+        for (Entry<String, FilePathWithType> entry : addedFilesByNormalizedPath.entries()) {
+            if (wasAddedAndMessageCountSaturated(visitor, propertyTitle, entry)) {
+                return false; // TODO
             }
         }
         return true;
