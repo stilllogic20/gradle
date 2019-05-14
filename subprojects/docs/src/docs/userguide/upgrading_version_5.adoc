@@ -55,13 +55,6 @@ Contributed by link:https://github.com/fraenkelc[Christian Fränkel]
 
 Contributed by link:https://github.com/Godin[Evgeny Mandrikov]
 
-==== Java 8 required when embedding Gradle using the Tooling API
-
-This change does not affect builds but applications that embed Gradle using the Tooling API such as IDEs.
-
-The Gradle Tooling API is now compiled using Java 8 thus requires using Java 8 or above.
-Previously, the minimum required version was Java 6.
-
 [[changes_5.4]]
 == Upgrading from 5.3 and earlier
 
