@@ -38,6 +38,23 @@ Some plugins will break with this new version of Gradle, for example because the
 
 === Potential breaking changes
 
+==== User supplied Eclipse project names may be ignored on conflict
+
+Project names configured via link:{javadocPath}/org/gradle/plugins/ide/eclipse/model/EclipseProject.html[`EclipseProject.setName(...)`] were honored by Gradle and Buildship in all cases, even 
+when the names caused conflicts and import/synchronization errors. 
+
+Gradle can now deduplicate these names if they conflict with other project names in an Eclipse workspace. This may lead to different Eclipse project names for projects with user-specified names.
+
+A recent version of Buildship is required to take advantage of this behavior.
+
+Contributed by link:https://github.com/fraenkelc[Christian Fränkel]
+
+==== Default JaCoCo version upgraded to 0.8.4
+
+<<jacoco_plugin#jacoco_plugin, The JaCoCo plugin>> has been upgraded to use link:http://www.jacoco.org/jacoco/trunk/doc/changes.html[JaCoCo version 0.8.4] instead of 0.8.3 by default.
+
+Contributed by link:https://github.com/Godin[Evgeny Mandrikov]
+
 ==== Java 8 required when embedding Gradle using the Tooling API
 
 This change does not affect builds but applications that embed Gradle using the Tooling API such as IDEs.

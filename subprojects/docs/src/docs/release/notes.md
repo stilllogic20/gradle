@@ -12,6 +12,7 @@ Include only their name, impactful features should be called out separately belo
 [Mike Kobit](https://github.com/mkobit),
 [Erhard Pointl](https://github.com/epeee),
 [Sebastian Schuberth](https://github.com/sschuberth),
+[Evgeny Mandrikov](https://github.com/Godin),
 [Roberto Perez Alcolea](https://github.com/rpalcolea) and
 [Christian Fränkel](https://github.com/fraenkelc)
 
@@ -80,22 +81,7 @@ The following are the newly deprecated items in this Gradle release. If you have
 ### Example deprecation
 -->
 
-## Potential breaking changes
-
-### User supplied Eclipse project names may be ignored on conflict
-
-Project names configured via [`EclipseProject.setName(...)`](javadoc/org/gradle/plugins/ide/eclipse/model/EclipseProject.html) were honored by Gradle and Buildship in all cases, even 
-when the names caused conflicts and import/synchronization errors. 
-
-Gradle now can now deduplicate these names if they conflict with other project names in an Eclipse workspace. This may lead to different Eclipse project names for projects with user-specified names.
-
-A recent version of Buildship is required to take advantage of this behavior.
-
-Contributed by [Christian Fränkel](https://github.com/fraenkelc)
-
-## Breaking changes
-
-<!-- summary and links -->
+## Breaking changes and potential breaking changes
 
 See the [Gradle 5.x upgrade guide](userguide/upgrading_version_5.html#changes_@baseVersion@) to learn about breaking changes and considerations when upgrading to Gradle @version@.
 
